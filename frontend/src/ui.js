@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import ReactFlow, { Controls, Background, MiniMap } from "reactflow";
 import { useStore } from "./store";
 import { shallow } from "zustand/shallow";
@@ -37,6 +37,99 @@ const selector = (state) => ({
   addNodeAfter: state.addNodeAfter,
   addNodeBetween: state.addNodeBetween,
 });
+
+// Plus Button Component
+const PlusButton = ({ onClick }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '16px',
+        right: '16px',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}
+    >
+      {/* Tooltip */}
+      {showTooltip && (
+        <div
+          style={{
+            backgroundColor: '#333',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '500',
+            whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+            animation: 'fadeIn 0.2s ease-in-out'
+          }}
+        >
+          Open nodes panel
+          <span
+            style={{
+              backgroundColor: '#555',
+              padding: '2px 6px',
+              borderRadius: '3px',
+              fontSize: '12px',
+              fontWeight: '600'
+            }}
+          >
+            Tab
+          </span>
+        </div>
+      )}
+      
+      {/* Plus Button */}
+      <button
+        onClick={onClick}
+        onMouseEnter={() => {
+          setIsHovered(true);
+          setShowTooltip(true);
+        }}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          setShowTooltip(false);
+        }}
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '8px',
+          border: '2px solid #ddd',
+          backgroundColor: isHovered ? '#ff4444' : '#f5f5f5',
+          color: isHovered ? 'white' : '#666',
+          fontSize: '20px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s ease-in-out',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+          outline: 'none'
+        }}
+        onFocus={() => {
+          setIsHovered(true);
+          setShowTooltip(true);
+        }}
+        onBlur={() => {
+          setIsHovered(false);
+          setShowTooltip(false);
+        }}
+      >
+        +
+      </button>
+    </div>
+  );
+};
 
 export const PipelineUI = () => {
   const reactFlowWrapper = useRef(null);
@@ -94,6 +187,31 @@ export const PipelineUI = () => {
 
   // Get end nodes for displaying add buttons
   const endNodes = useMemo(() => getEndNodes(), [nodes, edges, getEndNodes]);
+
+  // Keyboard shortcut handler
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        // Check if we're not in an input field or textarea
+        const activeElement = document.activeElement;
+        const isInputField = activeElement && (
+          activeElement.tagName === 'INPUT' || 
+          activeElement.tagName === 'TEXTAREA' || 
+          activeElement.contentEditable === 'true'
+        );
+        
+        if (!isInputField) {
+          event.preventDefault();
+          openModal();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openModal]);
 
   // Helper functions
   const getInitNodeDataWrapper = useCallback((nodeID, type) => {
@@ -215,6 +333,9 @@ export const PipelineUI = () => {
           <MiniMap />
         </ReactFlow>
 
+        {/* Plus Button - Always visible */}
+        <PlusButton onClick={openModal} />
+
         {/* End Node Add Buttons */}
         {endNodes.map((node) => (
           <EndNodeButton
@@ -249,6 +370,20 @@ export const PipelineUI = () => {
           hasTrigger={hasTrigger}
         />
       </div>
+
+      {/* Add CSS for fade-in animation */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
     </>
   );
 };
